@@ -1,0 +1,83 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Create ALB, ALB security group, target groups, listeners and listener rules"
+Parameters:
+  vpcSecurityGroupStackName: #Security Group
+    Description: "Name of your vpc Security Group CFN Stack"
+    Type: String
+    Default: sgvpc-securitygroup
+  vpcStackName: #VPC Stack Name
+    Description: "Name of your vpc CFN Stack"
+    Type: String
+    Default: "sgpvpc"
+    AllowedValues:
+      - sgpvpc
+      - sydvpc
+      - tkovpc
+  instancev1Name: #Instance V1 Template
+    Description: "Name of your vpc Security Group CFN Stack"
+    Type: String
+    Default: instancev1
+  instancev2Name: #Instance V2 Template
+    Description: "Name of your vpc Security Group CFN Stack"
+    Type: String
+    Default: instancev2
+Resources:
+  ApplicationLoadBalancer: #Create ALB
+    Type: "AWS::ElasticLoadBalancingV2::LoadBalancer"
+    Properties:
+      Name: "Application-Load-Balancer"
+      Scheme: "internet-facing"
+      Type: "application"
+      Subnets:
+        - !ImportValue
+          Fn::Sub: ${vpcStackName}-publicSubnet1ID
+        - !ImportValue
+          Fn::Sub: ${vpcStackName}-publicSubnet2ID
+        - !ImportValue
+          Fn::Sub: ${vpcStackName}-publicSubnet3ID
+      SecurityGroups:
+        - !ImportValue
+          Fn::Sub: ${vpcSecurityGroupStackName}-albSecurityGroupID
+      IpAddressType: "ipv4"
+  LoadBalancerListener:
+    Type: "AWS::ElasticLoadBalancingV2::Listener"
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: "HTTP"
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref AppTargetGroup1
+  AppTargetGroup1:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 30
+      HealthCheckProtocol: HTTP
+      HealthCheckPath: "/"
+      HealthCheckPort: traffic-port
+      HealthCheckTimeoutSeconds: 15
+      HealthyThresholdCount: 5
+      UnhealthyThresholdCount: 3
+      TargetType: "instance"
+      Matcher:
+        HttpCode: "200"
+      VpcId:
+        Fn::ImportValue: !Sub ${vpcStackName}-VPCID
+      Port: 80
+      Protocol: HTTP
+      Name: "AppTargetGroup-1"
+      HealthCheckEnabled: true
+      Targets:
+        - Id: !ImportValue
+            Fn::Sub: ${instancev1Name}-publicInstance1ID
+          Port: 80
+        - Id: !ImportValue
+            Fn::Sub: ${instancev2Name}-publicInstance2ID
+Outputs:
+  ALB:
+    Description: The created loadbalancer
+    Value: !Ref ApplicationLoadBalancer
+
+  TargetGroup1:
+    Description: Created TargetGroup 1
+    Value: !Ref AppTargetGroup1

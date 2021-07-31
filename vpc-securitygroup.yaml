@@ -1,0 +1,54 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  vpcStackName: #ParameterKey
+    Description: "Name of your VPC CFN Stack"
+    Type: String
+    Default: "sgpvpc"
+    AllowedValues:
+      - sgpvpc
+      - sydvpc
+      - tkovpc
+Resources:
+  albSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "ALB Security Group"
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: "0.0.0.0/0"
+      VpcId:
+        Fn::ImportValue: !Sub ${vpcStackName}-VPCID
+      Tags:
+        - Key: "Name"
+          Value: "Cloudideastar Master VPC Security Group"
+  vpcCustomSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "cloudideastar-master vpc Custom Security Group"
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: "0.0.0.0/0"
+        - IpProtocol: icmp
+          FromPort: -1
+          ToPort: -1
+          CidrIp: "0.0.0.0/0"
+      VpcId:
+        Fn::ImportValue: !Sub ${vpcStackName}-VPCID
+      Tags:
+        - Key: "Name"
+          Value: "cloudideastar Master VPC Security Group"
+Outputs:
+  vpcCustomSecurityGroupID: #logicalID
+    Description: "cloudideastar Master VPC SecurityGroup ID"
+    Value: !Ref vpcCustomSecurityGroup # the vaule of export is here
+    Export:
+      Name: !Sub ${AWS::StackName}-vpcSecurityGroupID # the name of infra-stack export
+  albSecurityGroupID:
+    Description: "Cloudideastar Master VPC SecurityGroup ID"
+    Value: !Ref albSecurityGroup
+    Export:
+      Name: !Sub ${AWS::StackName}-albSecurityGroupID
